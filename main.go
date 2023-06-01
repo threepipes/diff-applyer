@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 )
@@ -231,6 +232,10 @@ func reviseEditScript(edt []editdist.Edit) {
 	}
 }
 
+func isInsLike(c editdist.Command) bool {
+	return c == editdist.Ins || c == editdist.Rpl
+}
+
 func rewriteText(ws []string, edt []editdist.Edit) string {
 	reviseEditScript(edt)
 	b := strings.Builder{}
@@ -240,6 +245,9 @@ func rewriteText(ws []string, edt []editdist.Edit) string {
 		if preCmd == editdist.Del && e.Cmd != editdist.Del && e.Cmd != editdist.Rpl {
 			b.WriteString("~~")
 		}
+		if isInsLike(preCmd) && e.Cmd != editdist.Ins {
+			b.WriteString("`")
+		}
 		switch e.Cmd {
 		case editdist.Del:
 			if preCmd == e.Cmd {
@@ -248,14 +256,18 @@ func rewriteText(ws []string, edt []editdist.Edit) string {
 				addWord(&b, fmt.Sprintf("~~%s", ws[wi]))
 			}
 		case editdist.Ins:
-			addWord(&b, fmt.Sprintf("`%s`", e.Word))
+			if isInsLike(preCmd) {
+				addWord(&b, e.Word)
+			} else {
+				addWord(&b, fmt.Sprintf("`%s", e.Word))
+			}
 			preCmd = e.Cmd
 			continue
 		case editdist.Rpl:
 			if preCmd == editdist.Del {
-				addWord(&b, fmt.Sprintf("%s~~`%s`", ws[wi], e.Word))
+				addWord(&b, fmt.Sprintf("%s~~`%s", ws[wi], e.Word))
 			} else {
-				addWord(&b, fmt.Sprintf("~~%s~~`%s`", ws[wi], e.Word))
+				addWord(&b, fmt.Sprintf("~~%s~~`%s", ws[wi], e.Word))
 			}
 		case editdist.Ign:
 			addWord(&b, ws[wi])
@@ -333,7 +345,11 @@ func main() {
 
 	// overwrite the file at the position of request text
 	if err := os.WriteFile(file, []byte(ls.String()), 0666); err != nil {
-		fmt.Printf("rollback cmd: `cp %s %s`\n", bk.Name(), file)
+		fmt.Printf("rollbacking...")
+		_, ierr := exec.Command("cp", bk.Name(), file).Output()
+		if ierr != nil {
+			fmt.Println("Failed to rollback: ", ierr)
+		}
 		log.Fatal(err)
 	}
 }
