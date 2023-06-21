@@ -58,6 +58,16 @@ func (ls *Lines) append(l *Line) {
 	}
 }
 
+func (ls *Lines) pop() *Line {
+	if ls.end == nil {
+		return nil
+	}
+	l := ls.end
+	ls.end = l.prev
+	ls.end.next = nil
+	return l
+}
+
 func (ls *Lines) iterate(f func(l *Line) *Line) {
 	var nxt *Line
 	l := ls.start
@@ -131,6 +141,12 @@ func readBlock(l *Line, endMark string) Lines {
 
 func locateTargets(ls Lines) map[string]*RevisePair {
 	ps := make(map[string]*RevisePair)
+
+	// Workaround: To avoid failing readBlock() without no last line
+	dummy := ""
+	ls.append(&Line{text: &dummy})
+	defer ls.pop()
+
 	ls.iterate(func(l *Line) *Line {
 		if !strings.Contains(*l.text, "%%%") {
 			return nil

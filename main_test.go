@@ -36,6 +36,21 @@ func Test_locateTargets(t *testing.T) {
 				}, "\n"),
 			},
 		},
+		{
+			name: "no outer text",
+			ls:   readFileAsLines("fixtures/test4.md"),
+			want: map[string]string{
+				"1": strings.Join([]string{
+					"id:1",
+					"%%% req-start id:1 %%%",
+					"hello, I am DIFF-MD.",
+					"%%% req-end %%%",
+					"%%% rev-start id:1 %%%",
+					"hello, I am DIFF-MC.",
+					"%%% rev-end %%%",
+				}, "\n"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
